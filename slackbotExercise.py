@@ -5,6 +5,7 @@ import json
 import csv
 import os
 from random import shuffle
+from random import randint
 import pickle
 import os.path
 import datetime
@@ -57,7 +58,7 @@ class Bot:
             self.channel_name = settings["channelName"]
             self.min_countdown = settings["callouts"]["timeBetween"]["minTime"]
             self.max_countdown = settings["callouts"]["timeBetween"]["maxTime"]
-            self.num_people_per_callout = settings["callouts"]["numPeople"]
+            self.num_people_per_callout = randint(1, settings["callouts"]["numPeople"])
             self.sliding_window_size = settings["callouts"]["slidingWindowSize"]
             self.group_callout_chance = settings["callouts"]["groupCalloutChance"]
             self.channel_id = settings["channelId"]
@@ -65,6 +66,7 @@ class Bot:
             self.office_hours_on = settings["officeHours"]["on"]
             self.office_hours_begin = settings["officeHours"]["begin"]
             self.office_hours_end = settings["officeHours"]["end"]
+            self.multipliers = settings["multipliers"]
 
             self.debug = settings["debug"]
 
@@ -184,7 +186,6 @@ Selects the next time interval
 def selectNextTimeInterval(bot):
     return random.randrange(bot.min_countdown * 60, bot.max_countdown * 60)
 
-
 '''
 Selects a person to do the already-selected exercise
 '''
@@ -192,11 +193,9 @@ def assignExercise(bot, exercise):
     # Select number of reps
     exercise_reps = random.randrange(exercise["minReps"], exercise["maxReps"]+1)
 
-    winner_announcement = str(exercise_reps) + " " + str(exercise["units"]) + " " + exercise["name"] + " RIGHT NOW "
-
     # EVERYBODY
     if random.random() < bot.group_callout_chance:
-        winner_announcement += "@channel!"
+        winner_announcement = str(exercise_reps) + " " + str(exercise["units"]) + " " + exercise["name"] + " RIGHT NOW @channel!"
 
         for user_id in bot.user_cache:
             user = bot.user_cache[user_id]
@@ -206,18 +205,15 @@ def assignExercise(bot, exercise):
 
     else:
         winners = [selectUser(bot, exercise) for i in range(bot.num_people_per_callout)]
+        winner_announcement = exercise["name"] + ":"
 
         for i in range(bot.num_people_per_callout):
-            winner_announcement += str(winners[i].getUserHandle())
-            if i == bot.num_people_per_callout - 2:
-                winner_announcement += ", and "
-            elif i == bot.num_people_per_callout - 1:
-                winner_announcement += "!"
-            else:
-                winner_announcement += ", "
+            winner_multiplier = bot.multipliers.get(winners[i].getUserHandle(), 1)
+            winner_reps = int(round(exercise_reps * winner_multiplier))
 
-            winners[i].addExercise(exercise, exercise_reps)
-            logExercise(bot,winners[i].getUserHandle(),exercise["name"],exercise_reps,exercise["units"])
+            winner_announcement += "\n" + winners[i].getUserHandle() + ": do " + str(winner_reps)
+            winners[i].addExercise(exercise, winner_reps)
+            logExercise(bot,winners[i].getUserHandle(),exercise["name"],winner_reps,exercise["units"])
 
     # Announce the user
     if not bot.debug:
