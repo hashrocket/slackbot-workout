@@ -211,7 +211,7 @@ def assignExercise(bot, exercise):
             winner_multiplier = bot.multipliers.get(winners[i].getUserHandle(), 1)
             winner_reps = int(round(exercise_reps * winner_multiplier))
 
-            winner_announcement += "\n" + winners[i].getUserHandle() + ": do " + str(winner_reps)
+            winner_announcement += "\n" + winners[i].getUserHandle() + ": do " + str(winner_reps) + " " + str(exercise["units"])
             winners[i].addExercise(exercise, winner_reps)
             logExercise(bot,winners[i].getUserHandle(),exercise["name"],winner_reps,exercise["units"])
 
